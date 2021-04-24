@@ -18,8 +18,7 @@ import org.springframework.web.client.RestTemplate;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.HashMap;
+import java.util.*;
 
 import static com.google.common.net.HttpHeaders.AUTHORIZATION;
 import static com.sun.xml.internal.ws.spi.db.BindingContextFactory.LOGGER;
@@ -33,9 +32,8 @@ public class WCLogsClient {
     private static final String CLIENT_ID = "";
     private static final String CLIENT_SECRET = "";
 
-    private static final int NAXXRAMAS_ZONE_ID = 1006;
-    private static final String SERVER_GEHENNAS = "Gehennas";
-    private static final String REGION_EUROPE = "eu";
+    private static final String REPORTS_QUERY_STRING = "reports";
+    private static final String REPORT_LIMIT = "100";
 
     private final ObjectMapper objectMapper;
 
@@ -48,7 +46,7 @@ public class WCLogsClient {
         objectMapper = injector.getInstance(ObjectMapper.class);
     }
 
-    public String getRecentReports() throws IOException {
+    public List<LinkedHashMap> getRecentReports(String charName, String server, String region) throws IOException {
         attemptToRefreshAccessToken();
 
         RestTemplate restTemplate = new RestTemplate();
@@ -56,8 +54,8 @@ public class WCLogsClient {
 
         String query = "{\n" +
                 "  characterData {\n" +
-                "    character(name: \"Kiehl\", serverSlug: \"Gehennas\", serverRegion: \"eu\") {\n" +
-                "      recentReports(limit: 20) {\n" +
+                "    character(name: \"" + charName + "\", serverSlug: \"" + server + "\", serverRegion: \"" + region + "\") {\n" +
+                "      recentReports(limit: " + REPORT_LIMIT + ") {\n" +
                 "        reports: data {\n" +
                 "          code\n" +
                 "          startTime\n" +
@@ -81,7 +79,22 @@ public class WCLogsClient {
             return new HttpResponse(exchange.getStatusCode().value(), exchange.getBody());
         });
 
-        return response.toString();
+        LinkedHashMap data = response.extractValue("data");
+        return getListOfReports(data);
+    }
+
+    private List getListOfReports(LinkedHashMap hashMap) {
+        LinkedHashMap tempHashMap = hashMap;
+        String hashKey = "";
+
+        while(!hashKey.equals(REPORTS_QUERY_STRING)){
+            hashKey = tempHashMap.keySet().stream().findFirst().get().toString();
+            if(hashKey.equals(REPORTS_QUERY_STRING)) {
+                return (List) tempHashMap.get(REPORTS_QUERY_STRING);
+            }
+            tempHashMap = (LinkedHashMap) tempHashMap.get(hashKey);
+        }
+        return new ArrayList<>();
     }
 
     private void attemptToRefreshAccessToken() throws IOException {
