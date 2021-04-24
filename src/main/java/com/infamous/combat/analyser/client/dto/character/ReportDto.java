@@ -1,11 +1,11 @@
-package com.infamous.combat.analyser.client.dto.graphql.character;
+package com.infamous.combat.analyser.client.dto.character;
 
 import lombok.Data;
 
 @Data
-public class Report {
+public class ReportDto {
     private String code;
     private long startTime;
     private long endTime;
-    private Zone zone;
+    private ZoneDto zoneDto;
 }
